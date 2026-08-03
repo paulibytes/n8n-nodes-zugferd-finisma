@@ -161,6 +161,12 @@ pnpm build
 pnpm pack             # oder: npm pack
 ```
 
+Nicht mischen: läuft `pnpm install` und danach `npm install` im selben
+Arbeitsverzeichnis, versucht npm pnpms internes `node_modules/.pnpm/` als
+normalen Abhängigkeitsbaum zu lesen und bricht mit
+`Cannot read properties of null (reading 'matches')` ab. Vor einem Wechsel des
+Paketmanagers also `rm -rf node_modules`.
+
 Warum das `--ignore-scripts` bei npm: `n8n-workflow` bringt über
 `@n8n/expression-runtime` das native Modul `isolated-vm` mit, dessen Build auf
 vielen Rechnern scheitert (`gyp ERR! make failed`). Gebraucht wird
