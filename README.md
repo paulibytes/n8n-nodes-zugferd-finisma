@@ -156,16 +156,17 @@ Workflow abzubrechen.
 ## Lokal entwickeln
 
 ```bash
-npm install --ignore-scripts
-npm run build
-npm pack
+pnpm install          # oder: npm install --ignore-scripts
+pnpm build
+pnpm pack             # oder: npm pack
 ```
 
-Das `--ignore-scripts` ist nötig: `n8n-workflow` bringt über
+Warum das `--ignore-scripts` bei npm: `n8n-workflow` bringt über
 `@n8n/expression-runtime` das native Modul `isolated-vm` mit, dessen Build auf
-vielen Rechnern scheitert. Gebraucht wird `n8n-workflow` hier nur für die
-Typen, zur Laufzeit stellt n8n es selbst bereit. Ohne den Schalter bricht
-`npm install` ab, mit ihm läuft alles durch.
+vielen Rechnern scheitert (`gyp ERR! make failed`). Gebraucht wird
+`n8n-workflow` hier nur für die Typen, zur Laufzeit stellt n8n es selbst
+bereit, das Binary läuft also nie. Bei pnpm steht die Ausnahme fest in der
+`package.json` (`pnpm.neverBuiltDependencies`), da genügt `pnpm install`.
 
 Den **Inhalt** des Archivs direkt in das Verzeichnis `custom` der n8n-Daten
 entpacken, sodass dort `package.json` liegt und kein Unterordner:

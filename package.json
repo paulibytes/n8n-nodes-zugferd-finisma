@@ -59,5 +59,13 @@
   },
   "bugs": {
     "url": "https://github.com/paulibytes/n8n-nodes-zugferd-finisma/issues"
+  },
+  "pnpm": {
+    "neverBuiltDependencies": [
+      "isolated-vm"
+    ],
+    "ignoredBuiltDependencies": [
+      "isolated-vm"
+    ]
   }
 }
