@@ -1,0 +1,63 @@
+{
+  "name": "n8n-nodes-zugferd-finisma",
+  "version": "0.1.0",
+  "description": "n8n-Node für ZUGFeRD-/E-Rechnungen: PDF plus EN-16931-Daten zur fertigen ZUGFeRD-Rechnung erzeugen und vorhandene E-Rechnungen prüfen (finisma.de)",
+  "license": "MIT",
+  "homepage": "https://finisma.de/entwickler",
+  "author": {
+    "name": "Paulibytes UG",
+    "email": "info@paulibytes.de"
+  },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/paulibytes/n8n-nodes-zugferd-finisma.git"
+  },
+  "keywords": [
+    "n8n-community-node-package",
+    "zugferd",
+    "xrechnung",
+    "e-rechnung",
+    "erechnung",
+    "factur-x",
+    "en-16931",
+    "einvoice",
+    "e-invoice",
+    "invoice",
+    "germany",
+    "finisma"
+  ],
+  "engines": {
+    "node": ">=20"
+  },
+  "main": "index.js",
+  "scripts": {
+    "build": "tsc -p tsconfig.json && node scripts/copy-assets.mjs",
+    "typecheck": "tsc -p tsconfig.json --noEmit",
+    "prepublishOnly": "pnpm build"
+  },
+  "files": [
+    "dist",
+    "index.js"
+  ],
+  "n8n": {
+    "n8nNodesApiVersion": 1,
+    "credentials": [
+      "dist/credentials/FinismaApi.credentials.js",
+      "dist/credentials/FinismaOAuth2Api.credentials.js"
+    ],
+    "nodes": [
+      "dist/nodes/Zugferd/Zugferd.node.js"
+    ]
+  },
+  "devDependencies": {
+    "@types/node": "^20.16.11",
+    "n8n-workflow": "^1.82.0",
+    "typescript": "^5.6.3"
+  },
+  "peerDependencies": {
+    "n8n-workflow": "*"
+  },
+  "bugs": {
+    "url": "https://github.com/paulibytes/n8n-nodes-zugferd-finisma/issues"
+  }
+}
