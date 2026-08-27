@@ -161,11 +161,39 @@ export class Zugferd implements INodeType {
         default: "create",
       },
       {
+        displayName: "Ausgabeformat",
+        name: "outputFormat",
+        type: "options",
+        options: [
+          {
+            name: "ZUGFeRD-PDF",
+            value: "pdf",
+            description:
+              "PDF/A-3 mit eingebettetem CII-XML. Braucht eine Quell-PDF als Sichtdokument.",
+          },
+          {
+            name: "Nur XML",
+            value: "xml",
+            description:
+              "Nur die CII-XML, ohne Sichtdokument. Fuer Behoerdenportale und Weiterverarbeitung. Erfordert ein aktives finisma-Abo.",
+          },
+        ],
+        default: "pdf",
+        displayOptions: { show: { operation: ["create"] } },
+        description:
+          "Beim XML-Weg entfaellt die Quell-PDF und der Einbettungsschritt, die Antwort ist deutlich schneller.",
+      },
+      {
         displayName: "PDF-Feld (Binary)",
         name: "binaryPropertyName",
         type: "string",
         default: "data",
         required: true,
+        // Beim XML-Weg gibt es kein Traegerdokument, deshalb ausgeblendet.
+        // Das Feld bleibt fuer die Pruefung und den PDF-Weg Pflicht.
+        displayOptions: {
+          hide: { operation: ["create"], outputFormat: ["xml"] },
+        },
         description:
           "Name des Binärfelds im Eingangs-Item, das die PDF enthält",
       },
@@ -206,7 +234,7 @@ export class Zugferd implements INodeType {
         default: "",
         displayOptions: { show: { operation: ["create"] } },
         description:
-          "Optional. Leer lassen, um den Namen der Eingangsdatei zu übernehmen.",
+          "Optional. Leer lassen, um den Namen der Eingangsdatei zu übernehmen. Die Endung richtet sich nach dem Ausgabeformat.",
       },
       {
         displayName: "Ausgabe-Binärfeld",
@@ -215,7 +243,7 @@ export class Zugferd implements INodeType {
         default: "data",
         displayOptions: { show: { operation: ["create"] } },
         description:
-          "Unter diesem Namen wird die erzeugte ZUGFeRD-PDF im Item abgelegt",
+          "Unter diesem Namen wird das Ergebnis im Item abgelegt, je nach Ausgabeformat die ZUGFeRD-PDF oder die XML",
       },
     ],
   };
@@ -239,31 +267,42 @@ export class Zugferd implements INodeType {
     for (let i = 0; i < items.length; i++) {
       try {
         const operation = this.getNodeParameter("operation", i) as string;
-        const binaryPropertyName = this.getNodeParameter(
-          "binaryPropertyName",
-          i
-        ) as string;
-
-        const binary = items[i].binary?.[binaryPropertyName];
-        if (!binary) {
-          throw new NodeOperationError(
-            this.getNode(),
-            `Kein Binärfeld "${binaryPropertyName}" im Item ${i}. Die PDF muss als Binärdatei anliegen.`,
-            { itemIndex: i }
-          );
-        }
-        const pdfBuffer = await this.helpers.getBinaryDataBuffer(
-          i,
-          binaryPropertyName
-        );
-        const sourceFilename = binary.fileName ?? "rechnung.pdf";
+        // T74: Der XML-Weg hat kein Traegerdokument. Die Quell-PDF wird dort
+        // weder verlangt noch gelesen, sonst scheiterte ein Workflow, der nur
+        // strukturierte Daten aus einem Vorsystem uebergibt.
+        const outputFormat =
+          operation === "create"
+            ? (this.getNodeParameter("outputFormat", i) as string)
+            : "pdf";
+        const brauchtTraeger = operation !== "create" || outputFormat !== "xml";
 
         const form = new FormData();
-        form.append(
-          "pdf",
-          new Blob([new Uint8Array(pdfBuffer)], { type: "application/pdf" }),
-          sourceFilename
-        );
+        let sourceFilename = "rechnung.pdf";
+
+        if (brauchtTraeger) {
+          const binaryPropertyName = this.getNodeParameter(
+            "binaryPropertyName",
+            i
+          ) as string;
+          const binary = items[i].binary?.[binaryPropertyName];
+          if (!binary) {
+            throw new NodeOperationError(
+              this.getNode(),
+              `Kein Binärfeld "${binaryPropertyName}" im Item ${i}. Die PDF muss als Binärdatei anliegen.`,
+              { itemIndex: i }
+            );
+          }
+          const pdfBuffer = await this.helpers.getBinaryDataBuffer(
+            i,
+            binaryPropertyName
+          );
+          sourceFilename = binary.fileName ?? "rechnung.pdf";
+          form.append(
+            "pdf",
+            new Blob([new Uint8Array(pdfBuffer)], { type: "application/pdf" }),
+            sourceFilename
+          );
+        }
 
         if (operation === "verify") {
           const options: IHttpRequestOptions = {
@@ -327,7 +366,9 @@ export class Zugferd implements INodeType {
           // sonst steckte die Rechnung als Anhang in sich. Bewusst überspringen
           // statt abzubrechen: eine aus $binary erzeugte Feldliste enthält den
           // Namen zwangsläufig mit, und das soll einfach funktionieren.
-          .filter((f) => f !== binaryPropertyName);
+          // Ohne Traegerdokument gibt es kein PDF-Feld, das uebersprungen
+          // werden muesste.
+          .filter((f) => !brauchtTraeger || f !== (this.getNodeParameter("binaryPropertyName", i) as string));
         const attachmentDescriptions = (
           this.getNodeParameter("attachmentDescriptions", i) as string
         )
@@ -355,20 +396,27 @@ export class Zugferd implements INodeType {
           form.append("attachmentDescriptions", attachmentDescriptions[n] ?? "");
         }
 
+        const vorgabeName = this.getNodeParameter("filename", i) as string;
         const filename =
-          (this.getNodeParameter("filename", i) as string) ||
-          sourceFilename.replace(/\.pdf$/i, "") + "-zugferd.pdf";
+          vorgabeName ||
+          sourceFilename.replace(/\.pdf$/i, "") +
+            (outputFormat === "xml" ? ".xml" : "-zugferd.pdf");
         form.append("filename", filename);
 
         const options: IHttpRequestOptions = {
           method: "POST",
-          url: `${baseUrl}/api/v1/invoices`,
+          url:
+            outputFormat === "xml"
+              ? `${baseUrl}/api/v1/invoices?format=xml`
+              : `${baseUrl}/api/v1/invoices`,
           body: form,
-          // Antwort ist die fertige PDF, kein JSON. Der Accept-Header muss
+          // Antwort sind die Rohbytes, kein JSON. Der Accept-Header muss
           // ausdrücklich gesetzt werden: n8n schickt sonst die axios-Vorgabe
           // "application/json, text/plain, */*", und die Aushandlung der API
           // liefert daraufhin die Base64-Hülle statt der Bytes.
-          headers: { Accept: "application/pdf" },
+          headers: {
+            Accept: outputFormat === "xml" ? "application/xml" : "application/pdf",
+          },
           encoding: "arraybuffer",
           json: false,
           returnFullResponse: true,
@@ -385,20 +433,26 @@ export class Zugferd implements INodeType {
           throw apiError(this.getNode(), response.statusCode, response.body, i);
         }
 
-        const pdf = Buffer.isBuffer(response.body)
+        const bytes = Buffer.isBuffer(response.body)
           ? response.body
           : Buffer.from(response.body as ArrayBuffer);
-        // Sicherheitsnetz: Kommt etwas anderes als eine PDF zurück, darf das
-        // nicht als Binärdatei durchgehen. Genau so entstand eine .pdf, die in
-        // Wahrheit JSON enthielt, und das fiel erst beim Öffnen auf.
-        if (pdf.subarray(0, 5).toString("latin1") !== "%PDF-") {
+        // Sicherheitsnetz: Kommt etwas anderes zurück als erwartet, darf das
+        // nicht als Binärdatei durchgehen. Genau so entstand einmal eine .pdf,
+        // die in Wahrheit JSON enthielt, und das fiel erst beim Öffnen auf.
+        // Für XML zählt der Anfang des Dokuments: Deklaration oder direkt das
+        // Wurzelelement, beides ist gültig.
+        const kopf = bytes.subarray(0, 200).toString("utf8").trimStart();
+        const passt =
+          outputFormat === "xml"
+            ? kopf.startsWith("<?xml") || kopf.startsWith("<")
+            : bytes.subarray(0, 5).toString("latin1") === "%PDF-";
+        if (!passt) {
           throw new NodeOperationError(
             this.getNode(),
-            "Antwort ist keine PDF-Datei. Erwartet wurden die Bytes der ZUGFeRD-Rechnung.",
-            {
-              itemIndex: i,
-              description: pdf.subarray(0, 200).toString("utf8"),
-            }
+            outputFormat === "xml"
+              ? "Antwort ist kein XML-Dokument. Erwartet wurde die CII-XML der Rechnung."
+              : "Antwort ist keine PDF-Datei. Erwartet wurden die Bytes der ZUGFeRD-Rechnung.",
+            { itemIndex: i, description: kopf.slice(0, 200) }
           );
         }
         const outField = this.getNodeParameter(
@@ -407,12 +461,12 @@ export class Zugferd implements INodeType {
         ) as string;
 
         out.push({
-          json: { filename, bytes: pdf.length },
+          json: { filename, bytes: bytes.length, format: outputFormat },
           binary: {
             [outField]: await this.helpers.prepareBinaryData(
-              pdf,
+              bytes,
               filename,
-              "application/pdf"
+              outputFormat === "xml" ? "application/xml" : "application/pdf"
             ),
           },
           pairedItem: { item: i },

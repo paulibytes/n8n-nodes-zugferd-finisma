@@ -1,6 +1,6 @@
 {
   "name": "n8n-nodes-zugferd-finisma",
-  "version": "0.1.0",
+  "version": "0.2.0",
   "description": "n8n-Node für ZUGFeRD-/E-Rechnungen: PDF plus EN-16931-Daten zur fertigen ZUGFeRD-Rechnung erzeugen und vorhandene E-Rechnungen prüfen (finisma.de)",
   "license": "MIT",
   "homepage": "https://finisma.de/entwickler",

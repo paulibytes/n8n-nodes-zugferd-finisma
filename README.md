@@ -9,6 +9,7 @@ Zwei Operationen:
 | Operation | Was passiert | Voraussetzung |
 |---|---|---|
 | **Rechnung erzeugen** | visuelle PDF + EN-16931-Daten → fertige ZUGFeRD-PDF (PDF/A-3) | Konto; ohne Abo bis zu 5/Tag mit Wasserzeichen |
+| **Rechnung erzeugen, Ausgabeformat "Nur XML"** | EN-16931-Daten → CII-XML, ohne Sichtdokument | aktives Abo |
 | **Rechnung prüfen** | E-Rechnung gegen EN 16931 und PDF/A-3 prüfen → Prüfbericht | kostenlos |
 
 ## Installation
@@ -144,6 +145,24 @@ existiert, bricht dagegen ab: das ist ein Tippfehler und soll auffallen.
 Anhänge gehören **nicht** in die Rechnungsdaten. Das EN-16931-Schema kennt kein
 `attachments`-Feld, ein Eintrag dort wird beim Prüfen stillschweigend verworfen,
 ohne Fehlermeldung.
+
+## Ausgabeformat
+
+Die Operation *Rechnung erzeugen* kennt zwei Ausgabeformate:
+
+**ZUGFeRD-PDF** (Standard): Die Quell-PDF im PDF-Feld wird zum Sichtdokument,
+das CII-XML wird eingebettet, das Ergebnis ist eine PDF/A-3.
+
+**Nur XML**: Es entsteht ausschliesslich die CII-XML, ohne Sichtdokument. Das
+PDF-Feld entfaellt dabei komplett, der Node schickt nur die Rechnungsdaten.
+Sinnvoll fuer Behoerdenportale und die Weiterverarbeitung in anderen Systemen,
+und deutlich schneller, weil der Einbettungsschritt wegfaellt. Das Ergebnis
+liegt als Binaerdatei mit `application/xml` im gewaehlten Ausgabefeld,
+`json.format` nennt das verwendete Format.
+
+Der XML-Weg setzt ein aktives finisma-Abo voraus. Das kostenlose
+Tageskontingent arbeitet mit einem Wasserzeichen im Sichtdokument, und eine
+XML kann keines tragen.
 
 ## Fehler
 
