@@ -8,7 +8,7 @@ Zwei Operationen:
 
 | Operation | Was passiert | Voraussetzung |
 |---|---|---|
-| **Rechnung erzeugen** | visuelle PDF + EN-16931-Daten → fertige ZUGFeRD-PDF (PDF/A-3) | aktives Abo |
+| **Rechnung erzeugen** | visuelle PDF + EN-16931-Daten → fertige ZUGFeRD-PDF (PDF/A-3) | Konto; ohne Abo bis zu 5/Tag mit Wasserzeichen |
 | **Rechnung prüfen** | E-Rechnung gegen EN 16931 und PDF/A-3 prüfen → Prüfbericht | kostenlos |
 
 ## Installation
@@ -148,8 +148,13 @@ ohne Fehlermeldung.
 ## Fehler
 
 Die API antwortet mit `400` bei ungültigen Daten (mit Feldpfad in `details`),
-`401` bei fehlendem oder ungültigem Credential, `403` beim Erzeugen ohne Abo
-oder bei fehlendem OAuth-Scope und `429` beim Rate-Limit (30 Prüfungen und 20 Erzeugungen pro Minute). Mit
+`401` bei fehlendem oder ungültigem Credential, `403` bei fehlendem OAuth-Scope
+und `429` beim Rate-Limit (30 Prüfungen und 20 Erzeugungen pro Minute) oder
+wenn das kostenlose Tageskontingent aufgebraucht ist (`free_quota_exhausted`,
+Retry-After zeigt auf Mitternacht). Ohne Abo erzeugt finisma bis zu 5
+Rechnungen pro Tag, die PDF trägt dann das finisma-Prüfsiegel als
+Wasserzeichen und die Antwort das Feld `watermarked: true`; mit Abo entfallen
+Limit und Siegel. Mit
 *Continue On Fail* landet die Meldung im `error`-Feld des Items statt den
 Workflow abzubrechen.
 
