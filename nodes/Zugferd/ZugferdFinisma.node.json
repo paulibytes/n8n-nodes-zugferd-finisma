@@ -1,0 +1,41 @@
+{
+	"node": "n8n-nodes-zugferd-finisma.zugferdFinisma",
+	"nodeVersion": "1.0",
+	"codexVersion": "1.0",
+	"categories": ["Finance & Accounting", "Utility"],
+	"alias": [
+		"ZUGFeRD",
+		"Factur-X",
+		"XRechnung",
+		"EN 16931",
+		"E-Invoice",
+		"E-Invoicing",
+		"Electronic Invoice",
+		"Invoice",
+		"CII",
+		"PDF/A-3",
+		"E-Rechnung",
+		"finisma",
+		"SEPA",
+		"pain.001",
+		"camt.053",
+		"camt.054",
+		"Bank Statement",
+		"Payment File",
+		"VAT ID",
+		"Peppol",
+		"BIC"
+	],
+	"resources": {
+		"primaryDocumentation": [
+			{
+				"url": "https://github.com/paulibytes/n8n-nodes-zugferd-finisma#readme"
+			}
+		],
+		"credentialDocumentation": [
+			{
+				"url": "https://github.com/paulibytes/n8n-nodes-zugferd-finisma#credentials"
+			}
+		]
+	}
+}

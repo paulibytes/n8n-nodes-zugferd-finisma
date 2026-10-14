@@ -1,22 +1,25 @@
 {
-  "$schema": "https://json.schemastore.org/tsconfig",
-  "compilerOptions": {
-    // Bewusst NICHT von tsconfig.base.json geerbt: n8n lädt Community-Nodes
-    // per require(), das Paket muss deshalb CommonJS ausliefern — der Rest des
-    // Monorepos ist ESM.
-    "target": "ES2022",
-    "lib": ["ES2022", "DOM"],
-    "module": "commonjs",
-    "moduleResolution": "node",
-    "esModuleInterop": true,
-    "forceConsistentCasingInFileNames": true,
-    "strict": true,
-    "skipLibCheck": true,
-    "declaration": true,
-    "sourceMap": true,
-    "outDir": "dist",
-    "rootDir": "."
-  },
-  "include": ["credentials/**/*.ts", "nodes/**/*.ts"],
-  "exclude": ["dist", "node_modules"]
+	"compilerOptions": {
+		"strict": true,
+		"module": "commonjs",
+		"moduleResolution": "node",
+		"target": "es2019",
+		"lib": ["es2019", "es2020", "es2022.error"],
+		"removeComments": true,
+		"useUnknownInCatchVariables": false,
+		"forceConsistentCasingInFileNames": true,
+		"noImplicitAny": true,
+		"noImplicitReturns": true,
+		"noUnusedLocals": true,
+		"strictNullChecks": true,
+		"preserveConstEnums": true,
+		"esModuleInterop": true,
+		"resolveJsonModule": true,
+		"incremental": true,
+		"declaration": true,
+		"sourceMap": true,
+		"skipLibCheck": true,
+		"outDir": "./dist/"
+	},
+	"include": ["credentials/**/*", "nodes/**/*", "nodes/**/*.json", "package.json"]
 }

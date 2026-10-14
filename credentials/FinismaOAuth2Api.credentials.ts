@@ -1,57 +1,65 @@
-import type { ICredentialType, INodeProperties } from "n8n-workflow";
+import type { ICredentialType, INodeProperties } from 'n8n-workflow';
 
 /**
- * OAuth 2.1 statt API-Key: Der Nutzer klickt in n8n auf "Connect my account",
- * meldet sich bei finisma an und bestätigt den Zugriff. n8n hält danach ein
- * Access-Token und erneuert es selbst über den Refresh-Token.
+ * OAuth 2.1 instead of an API key: the user clicks "Connect my account" in n8n,
+ * signs in to finisma and grants access. n8n then holds an access token and
+ * renews it with the refresh token.
  *
- * Grant Type ist zwingend PKCE — finisma verlangt code_challenge_method=S256
- * für jeden Client, auch für vertrauliche (OAuth 2.1). Client-ID und -Secret
- * bekommt der Nutzer über die Client-Registrierung; wie das geht, steht unter
- * https://finisma.de/entwickler.
+ * The grant type is fixed to PKCE: finisma requires code_challenge_method=S256
+ * for every client, confidential ones included (OAuth 2.1). Users get the
+ * client ID and secret by registering a client, see
+ * https://finisma.de/entwickler/oauth.
  */
 export class FinismaOAuth2Api implements ICredentialType {
-  name = "finismaOAuth2Api";
-  extends = ["oAuth2Api"];
-  displayName = "finisma OAuth2 API";
-  documentationUrl = "https://finisma.de/entwickler";
+	name = 'finismaOAuth2Api';
 
-  properties: INodeProperties[] = [
-    {
-      displayName: "Grant Type",
-      name: "grantType",
-      type: "hidden",
-      default: "pkce",
-    },
-    {
-      displayName: "Authorization URL",
-      name: "authUrl",
-      type: "hidden",
-      default: "https://finisma.de/api/oauth/authorize",
-    },
-    {
-      displayName: "Access Token URL",
-      name: "accessTokenUrl",
-      type: "hidden",
-      default: "https://finisma.de/api/oauth/token",
-    },
-    {
-      displayName: "Scope",
-      name: "scope",
-      type: "hidden",
-      default: "invoice:verify invoice:create",
-    },
-    {
-      displayName: "Auth URI Query Parameters",
-      name: "authQueryParameters",
-      type: "hidden",
-      default: "",
-    },
-    {
-      displayName: "Authentication",
-      name: "authentication",
-      type: "hidden",
-      default: "body",
-    },
-  ];
+	extends = ['oAuth2Api'];
+
+	displayName = 'Finisma OAuth2 API';
+
+	icon = {
+		light: 'file:../nodes/Zugferd/finisma.svg',
+		dark: 'file:../nodes/Zugferd/finisma.dark.svg',
+	} as const;
+
+	documentationUrl = 'https://github.com/paulibytes/n8n-nodes-zugferd-finisma#oauth2';
+
+	properties: INodeProperties[] = [
+		{
+			displayName: 'Grant Type',
+			name: 'grantType',
+			type: 'hidden',
+			default: 'pkce',
+		},
+		{
+			displayName: 'Authorization URL',
+			name: 'authUrl',
+			type: 'hidden',
+			default: 'https://finisma.de/api/oauth/authorize',
+		},
+		{
+			displayName: 'Access Token URL',
+			name: 'accessTokenUrl',
+			type: 'hidden',
+			default: 'https://finisma.de/api/oauth/token',
+		},
+		{
+			displayName: 'Scope',
+			name: 'scope',
+			type: 'hidden',
+			default: 'invoice:verify invoice:create',
+		},
+		{
+			displayName: 'Auth URI Query Parameters',
+			name: 'authQueryParameters',
+			type: 'hidden',
+			default: '',
+		},
+		{
+			displayName: 'Authentication',
+			name: 'authentication',
+			type: 'hidden',
+			default: 'body',
+		},
+	];
 }

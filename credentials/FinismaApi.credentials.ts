@@ -1,46 +1,54 @@
 import type {
-  IAuthenticateGeneric,
-  ICredentialType,
-  INodeProperties,
-} from "n8n-workflow";
+	IAuthenticateGeneric,
+	ICredentialTestRequest,
+	ICredentialType,
+	INodeProperties,
+} from 'n8n-workflow';
 
 /**
- * API-Key eines finisma-Kontos. Prüfen ist mit jedem gültigen Key möglich,
- * Erzeugen setzt zusätzlich ein aktives Abo voraus — das entscheidet der
- * Server, nicht der Key.
+ * API key of a finisma account. Verifying works with every valid key. Creating
+ * invoices also depends on the account (subscription, credits or the free daily
+ * quota with watermark); the server decides that, not the key.
  */
 export class FinismaApi implements ICredentialType {
-  name = "finismaApi";
-  displayName = "finisma API";
-  documentationUrl = "https://finisma.de/entwickler";
+	name = 'finismaApi';
 
-  properties: INodeProperties[] = [
-    {
-      displayName: "API-Key",
-      name: "apiKey",
-      type: "string",
-      typeOptions: { password: true },
-      default: "",
-      required: true,
-      description:
-        'Im finisma-Konto unter "API-Zugang" erstellen. Beginnt mit "fnsm_" und wird nur einmal angezeigt.',
-    },
-    {
-      displayName: "Basis-URL",
-      name: "baseUrl",
-      type: "string",
-      default: "https://finisma.de",
-      description:
-        "Nur ändern, wenn eine eigene Instanz angesprochen werden soll. Ohne abschließenden Schrägstrich.",
-    },
-  ];
+	displayName = 'Finisma API';
 
-  authenticate: IAuthenticateGeneric = {
-    type: "generic",
-    properties: {
-      headers: {
-        Authorization: "=Bearer {{$credentials.apiKey}}",
-      },
-    },
-  };
+	icon = {
+		light: 'file:../nodes/Zugferd/finisma.svg',
+		dark: 'file:../nodes/Zugferd/finisma.dark.svg',
+	} as const;
+
+	documentationUrl = 'https://github.com/paulibytes/n8n-nodes-zugferd-finisma#credentials';
+
+	properties: INodeProperties[] = [
+		{
+			displayName: 'API Key',
+			name: 'apiKey',
+			type: 'string',
+			typeOptions: { password: true },
+			default: '',
+			required: true,
+			description:
+				'Create it in your finisma account in the section "API und Anwendungen" (API and apps). It starts with "fnsm_" and is shown only once.',
+		},
+	];
+
+	authenticate: IAuthenticateGeneric = {
+		type: 'generic',
+		properties: {
+			headers: {
+				Authorization: '=Bearer {{$credentials.apiKey}}',
+			},
+		},
+	};
+
+	// GET /api/v1/me returns account and subscription status and creates nothing.
+	test: ICredentialTestRequest = {
+		request: {
+			baseURL: 'https://finisma.de',
+			url: '/api/v1/me',
+		},
+	};
 }
