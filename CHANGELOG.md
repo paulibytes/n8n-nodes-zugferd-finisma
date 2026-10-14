@@ -4,7 +4,7 @@ All notable changes to this package are documented in this file.
 The format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and the package uses [Semantic Versioning](https://semver.org/).
 
-## [0.3.0] - unreleased
+## [0.3.0] - 2026-10-14
 
 Prepared for verification by n8n, so the node can be installed on n8n Cloud.
 Includes the changes of 0.2.0, which was never published to npm.
@@ -67,5 +67,5 @@ Includes the changes of 0.2.0, which was never published to npm.
   EN 16931 invoice data, with embedded attachments) and "Verify Invoice".
 - Authentication with an API key or OAuth2 (PKCE).
 
-[0.3.0]: https://github.com/paulibytes/n8n-nodes-zugferd-finisma/compare/0f4a86f...HEAD
+[0.3.0]: https://github.com/paulibytes/n8n-nodes-zugferd-finisma/compare/0f4a86f...0.3.0
 [0.1.0]: https://github.com/paulibytes/n8n-nodes-zugferd-finisma/commit/0f4a86f
