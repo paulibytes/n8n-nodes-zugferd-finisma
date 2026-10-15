@@ -57,12 +57,15 @@ export function hintForStatus(
 	if (statusCode === 422 && (context === 'paymentCreate' || context === 'paymentForeign')) {
 		return "The payment run breaks the rules listed above, so no file was created. Correct 'Payment Run (JSON)' and run the node again.";
 	}
+	if (statusCode === 502 && context === 'invoiceCreate') {
+		return 'The invoice could not be created, or the generated invoice did not pass the final check. No credit or free quota was used. Run the node again later or contact finisma.';
+	}
 	if (statusCode === 502 && (context === 'paymentCreate' || context === 'paymentForeign')) {
 		return 'The created file did not pass the final check, or the check was not reachable. No file was delivered. Run the node again later or contact finisma.';
 	}
 	if (statusCode === 400) {
 		if (context === 'invoiceCreate') {
-			return "Compare 'Invoice Data (JSON)' with the 'Invoice' schema at https://finisma.de/api-docs.";
+			return "Compare 'Invoice Data (JSON)' with the 'Invoice' schema at https://finisma.de/api-docs. A logo must be PNG, JPEG or SVG up to 500 KB, and an SVG must not contain scripts or links to other files.";
 		}
 		if (context === 'paymentCreate' || context === 'paymentForeign') {
 			return "Compare 'Payment Run (JSON)' with the 'PaymentRun' schema at https://finisma.de/api-docs.";

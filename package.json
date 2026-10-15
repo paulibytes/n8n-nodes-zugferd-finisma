@@ -1,6 +1,6 @@
 {
 	"name": "n8n-nodes-zugferd-finisma",
-	"version": "0.3.0",
+	"version": "0.4.0",
 	"description": "n8n node for e-invoices (ZUGFeRD, Factur-X, XRechnung, EN 16931), partner checks, SEPA payment files (pain.001) and bank statements (camt) via the finisma API",
 	"license": "MIT",
 	"homepage": "https://github.com/paulibytes/n8n-nodes-zugferd-finisma#readme",

@@ -5,9 +5,9 @@ This is an n8n community node for electronic invoices according to
 statement files. It uses the public REST API of [finisma](https://finisma.de),
 a German e-invoicing service, to:
 
-- turn a PDF and structured invoice data into a ZUGFeRD invoice (PDF/A-3 with
-  embedded CII XML), verify existing e-invoices and extract invoice data from
-  a PDF,
+- turn structured invoice data into a ZUGFeRD invoice (PDF/A-3 with embedded
+  CII XML), either with your own PDF or with a PDF that finisma generates from
+  the data, verify existing e-invoices and extract invoice data from a PDF,
 - check business partners (VAT ID against VIES, Peppol participant),
 - create SEPA and foreign payment files (pain.001), look up a BIC and check
   existing payment files,
@@ -36,7 +36,7 @@ Select a **Resource**, then an **Operation**. Costs per operation are listed in
 
 | Resource       | Operation                                 | What it does                                                                                                                                                            | API endpoint                       |
 | -------------- | ----------------------------------------- | ----------------------------------------------------------------------------------------------------------------------------------------------------------------------- | ---------------------------------- |
-| Invoice        | **Create**, output format **ZUGFeRD PDF** | Visual PDF + EN 16931 invoice data → ZUGFeRD PDF (PDF/A-3 with embedded CII XML)                                                                                        | `POST /api/v1/invoices`            |
+| Invoice        | **Create**, output format **ZUGFeRD PDF** | EN 16931 invoice data + your visual PDF, or a PDF generated from the data (optionally with logo) → ZUGFeRD PDF (PDF/A-3 with embedded CII XML)                          | `POST /api/v1/invoices`            |
 | Invoice        | **Create**, output format **XML Only**    | EN 16931 invoice data → CII XML, no visual document. With `"profile": "xrechnung"` the result is an XRechnung 3.0                                                       | `POST /api/v1/invoices?format=xml` |
 | Invoice        | **Verify**                                | Checks an existing e-invoice (PDF) against EN 16931, the ZUGFeRD/Factur-X rules and PDF/A-3 → report as JSON                                                            | `POST /api/v1/verify`              |
 | Invoice        | **Extract Data**                          | Reads the EN 16931 invoice data from a PDF invoice → `invoice`, `issues`, `repairedPaths`, `source`                                                                     | `POST /api/v1/extractions`         |
@@ -114,9 +114,14 @@ and you can disconnect them there at any time. Details on the OAuth setup:
 
 ### Invoice: Create
 
-The source PDF must arrive as a **binary field** on the input item, for example
-from an email trigger, a cloud storage node or an HTTP Request node. Set its
-name in **Input Binary Field** (default `data`).
+**Source** decides where the visual document comes from:
+
+- **PDF From Binary Field** (default): your own invoice PDF. It must arrive as
+  a **binary field** on the input item, for example from an email trigger, a
+  cloud storage node or an HTTP Request node. Set its name in **Input Binary
+  Field** (default `data`).
+- **Generate From Invoice Data**: no PDF needed. finisma typesets the invoice
+  from the invoice data, see [Generate the PDF from the invoice data](#generate-the-pdf-from-the-invoice-data).
 
 Put the invoice data as JSON into **Invoice Data (JSON)**. The authoritative
 structure is the schema `Invoice` in the
@@ -166,12 +171,49 @@ GTIN).
 The result is stored as a binary field on the output item, named after
 **Output Binary Field** (default `data`). The JSON part of the item contains
 `filename`, `bytes` and `format` (`pdf` or `xml`). **Output File Name** is
-optional. Without it, the node reuses the input file name.
+optional. Without it, the node reuses the input file name, or names a
+generated invoice after its invoice number (`invoice-2026-001.pdf`).
+
+### Generate the PDF from the invoice data
+
+With **Source** set to **Generate From Invoice Data**, the node sends only the
+invoice data. finisma lays out the invoice on A4 (header with invoice number
+and dates, seller and buyer, line items, totals, VAT breakdown, payment
+details, page numbers), embeds the CII XML and returns the ZUGFeRD PDF. The
+layout is generated from exactly the XML that is embedded, so the visual
+document and the data always match. Before delivery, finisma checks the
+finished file against PDF/A-3 and EN 16931.
+
+- **Logo Binary Field** (optional): name of a binary field with your logo,
+  PNG, JPEG or SVG, up to 500 KB. It appears at the top right of the invoice,
+  at most 22 mm high and 70 mm wide. SVG files with scripts or links to other
+  files are rejected; use a PNG in that case.
+- **Language**: German (default) or English. It sets labels, number and date
+  format; the invoice data stays as it is.
+
+Example: a **Read/Write Files from Disk** node loads `logo.png` into the
+binary field `logo`, a **Code** node builds the invoice data, and the
+finisma node runs with:
+
+| Parameter           | Value                         |
+| ------------------- | ----------------------------- |
+| Resource            | Invoice                       |
+| Operation           | Create                        |
+| Output Format       | ZUGFeRD PDF                   |
+| Source              | Generate From Invoice Data    |
+| Invoice Data (JSON) | `{{ JSON.stringify($json) }}` |
+| Logo Binary Field   | `logo`                        |
+| Language            | German                        |
+
+Billing is the same as with your own PDF: with a subscription or credits the
+invoice has no watermark. From the free daily quota it carries the finisma
+verification seal, and the layout keeps room for it at the top.
 
 ### Output format
 
-- **ZUGFeRD PDF** (default): the source PDF becomes the visual document, the
-  CII XML is embedded, and the result is a PDF/A-3.
+- **ZUGFeRD PDF** (default): the source PDF, or the PDF generated from the
+  invoice data, becomes the visual document, the CII XML is embedded, and the
+  result is a PDF/A-3.
 - **XML Only**: returns only the CII XML, without a visual document. The node
   hides **Input Binary Field** and sends only the invoice data. This is useful
   for public-sector portals and further processing in other systems, and it is
@@ -194,8 +236,9 @@ field.
 for example `Timesheet March 2026`. It fills BT-123, the description of the
 supporting document. Without it, the recipient only sees the file name.
 
-The field named in **Input Binary Field** is always skipped, so the invoice
-never ends up attached to itself, even if the list was built from `$binary`.
+The fields named in **Input Binary Field** and **Logo Binary Field** are always
+skipped, so the invoice never ends up attached to itself, even if the list was
+built from `$binary`.
 Duplicate names are merged. A listed field that does not exist on the item
 stops the node, because that is usually a typo.
 
@@ -390,7 +433,8 @@ As stated in the [finisma REST API reference](https://finisma.de/entwickler/rest
 - **Invoice: Create, ZUGFeRD PDF** runs with an active subscription, with credits
   (1 credit per invoice, no watermark, no daily limit) or from the free daily
   quota. Invoices from the free quota carry the finisma verification seal as a
-  watermark, and the quota resets at midnight.
+  watermark, and the quota resets at midnight. This applies to both sources,
+  your own PDF and the generated one.
 - **Invoice: Create, XML Only** needs an active subscription or credits (1 credit
   per call). Without either, the API answers `403 subscription_required`.
 - **Invoice: Extract Data** needs an active subscription or costs 1 credit per
@@ -428,6 +472,7 @@ Technical limits, as reported by the API itself at
 | Requests per minute, extract                                      | 10                                          |
 | Requests per minute, partner checks, file checks, bank statements | 30                                          |
 | Source PDF                                                        | 25 MB                                       |
+| Logo (generated PDF)                                              | 500 KB                                      |
 | Payment file, bank statement or ZIP archive                       | 10 MB (ZIP: up to 50 files, 30 MB unpacked) |
 | Invoice data (JSON)                                               | 1 MB                                        |
 | Each attachment                                                   | 10 MB                                       |
@@ -438,19 +483,19 @@ The API answers with JSON `{ "error", "code", "details" }` and a matching HTTP
 status. The node shows the status, the code and the message, plus the field
 paths from `details` and a hint on what to do next.
 
-| Status | Code                           | Meaning                                                                                                                                                                      |
-| ------ | ------------------------------ | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| 400    | `invalid_input`                | File, invoice data or payment run is invalid, or the file is not a supported format. `details` names the field paths.                                                        |
-| 401    | `auth_required`, `invalid_key` | Credential missing, invalid, expired or revoked                                                                                                                              |
-| 402    | `payment_required`             | File checks and bank statements: free quota used up, no payments subscription and no credits. `Retry-After` points to midnight (checks) or the start of the month (parsing). |
-| 403    | `subscription_required`        | Neither subscription nor credits (XML only, extract, or when the free quota does not apply), or the payments subscription is missing                                         |
-| 403    | `insufficient_scope`           | OAuth2 token without the required scope                                                                                                                                      |
-| 429    | `free_quota_exhausted`         | Free daily quota used up. `Retry-After` points to midnight.                                                                                                                  |
-| 413    | `payload_too_large`            | File or ZIP archive larger than 10 MB                                                                                                                                        |
-| 422    | `invalid_input`                | Payment files: the payment run breaks a rule. `details` lists each finding with its path, and no file is created.                                                            |
-| 429    | `rate_limited`                 | Too many requests. `Retry-After` gives the wait time.                                                                                                                        |
-| 502    | `upstream_error`               | A downstream service of finisma returned an error. When creating payment files, also: the created file did not pass the final schema check, and no file was delivered.       |
-| 503    |                                | Peppol check: the Peppol directory (SML) did not answer                                                                                                                      |
+| Status | Code                           | Meaning                                                                                                                                                                                      |
+| ------ | ------------------------------ | -------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| 400    | `invalid_input`                | File, invoice data or payment run is invalid, or the file is not a supported format. `details` names the field paths.                                                                        |
+| 401    | `auth_required`, `invalid_key` | Credential missing, invalid, expired or revoked                                                                                                                                              |
+| 402    | `payment_required`             | File checks and bank statements: free quota used up, no payments subscription and no credits. `Retry-After` points to midnight (checks) or the start of the month (parsing).                 |
+| 403    | `subscription_required`        | Neither subscription nor credits (XML only, extract, or when the free quota does not apply), or the payments subscription is missing                                                         |
+| 403    | `insufficient_scope`           | OAuth2 token without the required scope                                                                                                                                                      |
+| 429    | `free_quota_exhausted`         | Free daily quota used up. `Retry-After` points to midnight.                                                                                                                                  |
+| 413    | `payload_too_large`            | File or ZIP archive larger than 10 MB                                                                                                                                                        |
+| 422    | `invalid_input`                | Payment files: the payment run breaks a rule. `details` lists each finding with its path, and no file is created.                                                                            |
+| 429    | `rate_limited`                 | Too many requests. `Retry-After` gives the wait time.                                                                                                                                        |
+| 502    | `upstream_error`               | A downstream service of finisma returned an error. When creating payment files or generating an invoice PDF, also: the created file did not pass the final check, and no file was delivered. |
+| 503    |                                | Peppol check: the Peppol directory (SML) did not answer                                                                                                                                      |
 
 The message texts come from the finisma API, which answers in German. Status
 and code are language-independent.

@@ -32,7 +32,7 @@ interface ApiResponse<T> {
  * finisma node for n8n. Every operation maps one to one to an endpoint of the
  * public finisma REST API (https://finisma.de/entwickler/rest):
  *
- *  Invoice        create   POST /api/v1/invoices (PDF or ?format=xml)
+ *  Invoice        create   POST /api/v1/invoices (PDF, generated PDF or ?format=xml)
  *                 verify   POST /api/v1/verify
  *                 extract  POST /api/v1/extractions
  *  Partner        checkVatId   GET /api/v1/vat/check
@@ -328,7 +328,14 @@ export class ZugferdFinisma implements INodeType {
 				// data from another system works without a PDF.
 				const outputFormat =
 					operation === 'create' ? (this.getNodeParameter('outputFormat', i) as string) : 'pdf';
-				const needsSourcePdf = operation !== 'create' || outputFormat !== 'xml';
+				// Since 0.4.0 the API typesets the PDF itself when the request has no
+				// pdf part. Workflows saved before have no 'source' and keep the
+				// source PDF from the binary field.
+				const generate =
+					operation === 'create' &&
+					outputFormat === 'pdf' &&
+					this.getNodeParameter('source', i, 'binary') === 'generate';
+				const needsSourcePdf = operation !== 'create' || (outputFormat !== 'xml' && !generate);
 
 				const form = new FormData();
 				let sourceFilename = 'invoice.pdf';
@@ -370,6 +377,24 @@ export class ZugferdFinisma implements INodeType {
 				);
 				form.append('invoice', new Blob([invoiceJson], { type: 'application/json' }));
 
+				// Logo and language only shape the generated invoice. The API
+				// rejects a logo next to a source PDF, so both go out only here.
+				let logoField = '';
+				if (generate) {
+					logoField = (this.getNodeParameter('logoBinaryPropertyName', i, '') as string).trim();
+					if (logoField) {
+						const logo = await readBinary(i, logoField, 'logo');
+						form.append(
+							'logo',
+							new Blob([new Uint8Array(logo.buffer)], {
+								type: logo.mimeType || 'application/octet-stream',
+							}),
+							logo.fileName ?? 'logo',
+						);
+					}
+					form.append('lang', this.getNodeParameter('language', i, 'de') as string);
+				}
+
 				// Attachments go out as additional file parts with the same field
 				// name. They must NOT go into the invoice data: the EN 16931 schema
 				// has no attachments field, and an entry there would be dropped
@@ -387,7 +412,7 @@ export class ZugferdFinisma implements INodeType {
 					// rejected: a field list built from $binary always contains it,
 					// and that should just work. Without a source PDF there is
 					// nothing to skip.
-					.filter((f) => !needsSourcePdf || f !== pdfField);
+					.filter((f) => (!needsSourcePdf || f !== pdfField) && f !== logoField);
 				const attachmentDescriptions = (
 					this.getNodeParameter('attachmentDescriptions', i) as string
 				)
@@ -420,10 +445,19 @@ export class ZugferdFinisma implements INodeType {
 				}
 
 				const requestedName = this.getNodeParameter('filename', i) as string;
+				if (generate && !requestedName) {
+					// Without a source file, the invoice number is the best name.
+					const number = (JSON.parse(invoiceJson) as { invoiceNumber?: unknown }).invoiceNumber;
+					const safe =
+						typeof number === 'string'
+							? number.replace(/[^\w.-]+/g, '-').replace(/^-+|-+$/g, '')
+							: '';
+					sourceFilename = safe ? `invoice-${safe}.pdf` : 'invoice.pdf';
+				}
 				const filename =
 					requestedName ||
 					sourceFilename.replace(/\.pdf$/i, '') +
-						(outputFormat === 'xml' ? '.xml' : '-zugferd.pdf');
+						(outputFormat === 'xml' ? '.xml' : generate ? '.pdf' : '-zugferd.pdf');
 				form.append('filename', filename);
 
 				const response = await call<Buffer | ArrayBuffer>(

@@ -4,6 +4,25 @@ All notable changes to this package are documented in this file.
 The format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and the package uses [Semantic Versioning](https://semver.org/).
 
+## [0.4.0] - 2026-10-15
+
+### Added
+
+- Invoice > Create, output format ZUGFeRD PDF: new parameter **Source**.
+  **Generate From Invoice Data** needs no PDF: finisma typesets the invoice
+  from the invoice data and returns the ZUGFeRD PDF, checked against PDF/A-3
+  and EN 16931 before delivery. **PDF From Binary Field** is the previous
+  behavior and stays the default, so existing workflows run unchanged.
+- **Logo Binary Field** (optional, PNG, JPEG or SVG up to 500 KB) and
+  **Language** (German or English) for the generated invoice.
+- Without **Output File Name**, a generated invoice is named after its
+  invoice number.
+
+### Changed
+
+- Error hints for Invoice > Create mention the logo rules (400) and the final
+  check of the generated invoice (502).
+
 ## [0.3.0] - 2026-10-14
 
 Prepared for verification by n8n, so the node can be installed on n8n Cloud.
