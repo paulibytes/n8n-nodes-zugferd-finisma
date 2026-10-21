@@ -1,0 +1,120 @@
+{
+  "name": "finisma: Rechnung aus Formular (ZUGFeRD)",
+  "nodes": [
+    {
+      "parameters": {
+        "multipleMethods": true,
+        "path": "rechnung",
+        "responseMode": "responseNode",
+        "options": {}
+      },
+      "name": "Webhook",
+      "type": "n8n-nodes-base.webhook",
+      "typeVersion": 2.1,
+      "position": [0, 208],
+      "webhookId": "finisma-rechnung-aus-formular"
+    },
+    {
+      "parameters": {
+        "respondWith": "text",
+        "responseBody": "<!doctype html>\n<html lang=\"de\"><head><meta charset=\"utf-8\"><meta name=\"viewport\" content=\"width=device-width,initial-scale=1\">\n<title>Rechnung erstellen · finisma</title>\n<style>\n body{font-family:-apple-system,Helvetica,Arial,sans-serif;background:#f4f6f8;color:#1f2328;margin:0;padding:32px 16px}\n main{max-width:760px;margin:0 auto;background:#fff;border:1px solid #e3e6ec;border-radius:12px;padding:28px}\n h1{margin:0 0 6px;font-size:24px} h2{font-size:15px;margin:22px 0 8px} p{color:#555;line-height:1.5;margin:0 0 6px}\n label{display:block;font-size:12px;color:#555;margin-bottom:3px}\n input,select{width:100%;box-sizing:border-box;border:1px solid #cfd5dd;border-radius:6px;padding:8px;font-size:14px}\n .reihe{display:grid;gap:10px;margin-bottom:10px}\n .r2{grid-template-columns:1fr 1fr} .r3{grid-template-columns:120px 1fr 90px}\n .pos{grid-template-columns:1fr 80px 120px 80px}\n button{margin-top:18px;background:#2e7d32;color:#fff;border:0;border-radius:8px;padding:12px 22px;font-size:15px;font-weight:700;cursor:pointer}\n</style></head><body><main>\n<h1>Rechnung erstellen</h1>\n<p>finisma erzeugt daraus eine ZUGFeRD-Rechnung (PDF/A-3, EN 16931), der Download startet sofort. Verkäufer und Bankverbindung kommen aus dem Workflow.</p>\n<form method=\"post\">\n<h2>Kunde</h2>\n<div class=\"reihe\"><div><label>Name</label><input name=\"name\" required value=\"Kunde AG\"></div></div>\n<div class=\"reihe\"><div><label>Straße und Hausnummer</label><input name=\"strasse\" required value=\"Allee 2\"></div></div>\n<div class=\"reihe r3\"><div><label>PLZ</label><input name=\"plz\" required value=\"10115\"></div><div><label>Ort</label><input name=\"ort\" required value=\"Berlin\"></div><div><label>Land</label><input name=\"land\" value=\"DE\" maxlength=\"2\"></div></div>\n<h2>Rechnung</h2>\n<div class=\"reihe r2\"><div><label>Rechnungsnummer (leer = automatisch)</label><input name=\"nummer\"></div><div><label>Rechnungsdatum (leer = heute)</label><input name=\"datum\" type=\"date\"></div></div>\n<h2>Positionen</h2>\n<div class=\"reihe pos\"><label>Bezeichnung</label><label>Menge</label><label>Einzelpreis netto</label><label>USt %</label></div>\n<div class=\"reihe pos\"><input name=\"p1_text\" value=\"Beratung\"><input name=\"p1_menge\" value=\"2\"><input name=\"p1_preis\" value=\"120,00\"><select name=\"p1_ust\"><option>19</option><option>7</option><option>0</option></select></div>\n<div class=\"reihe pos\"><input name=\"p2_text\" value=\"Fachbuch\"><input name=\"p2_menge\" value=\"1\"><input name=\"p2_preis\" value=\"39,90\"><select name=\"p2_ust\"><option>19</option><option selected>7</option><option>0</option></select></div>\n<div class=\"reihe pos\"><input name=\"p3_text\"><input name=\"p3_menge\"><input name=\"p3_preis\"><select name=\"p3_ust\"><option>19</option><option>7</option><option>0</option></select></div>\n<button type=\"submit\">Rechnung erzeugen</button>\n</form></main></body></html>",
+        "options": {
+          "responseHeaders": {
+            "entries": [
+              {
+                "name": "Content-Type",
+                "value": "text/html; charset=utf-8"
+              }
+            ]
+          }
+        }
+      },
+      "name": "show form",
+      "type": "n8n-nodes-base.respondToWebhook",
+      "typeVersion": 1.1,
+      "position": [272, 64]
+    },
+    {
+      "parameters": {
+        "jsCode": "// Standardwerte: hier den eigenen Verkäufer und die Bankverbindung eintragen.\nconst VERKAEUFER = {\n  name: 'Muster GmbH',\n  vatId: 'DE123456789',\n  address: { line1: 'Musterstraße 1', postalCode: '20095', city: 'Hamburg', countryCode: 'DE' },\n};\nconst IBAN = 'DE02120300000000202051';\nconst ZAHLUNGSZIEL_TAGE = 14;\n\n// Formularfelder in die Rechnungsdaten übersetzen.\nconst f = $input.first().json.body ?? {};\nconst zahl = (v) => Number(String(v ?? '').trim().replace(/\\./g, '').replace(',', '.'));\nconst positionen = [1, 2, 3]\n  .filter((i) => String(f['p' + i + '_text'] ?? '').trim() !== '')\n  .map((i) => ({\n    name: String(f['p' + i + '_text']).trim(),\n    quantity: zahl(f['p' + i + '_menge'] || '1'),\n    unitPriceNet: zahl(f['p' + i + '_preis']),\n    vatRatePercent: zahl(f['p' + i + '_ust'] || '19'),\n  }));\nconst eingabe = {\n  invoiceNumber: String(f.nummer ?? '').trim() || undefined,\n  issueDate: String(f.datum ?? '').trim() || undefined,\n  buyer: {\n    name: String(f.name ?? '').trim(),\n    address: {\n      line1: String(f.strasse ?? '').trim(),\n      postalCode: String(f.plz ?? '').trim(),\n      city: String(f.ort ?? '').trim(),\n      countryCode: (String(f.land ?? '').trim() || 'DE').toUpperCase(),\n    },\n  },\n  lines: positionen,\n};\nconst tag = (d) => d.toISOString().slice(0, 10);\nconst heute = tag(new Date());\nconst faellig = tag(new Date(Date.now() + ZAHLUNGSZIEL_TAGE * 864e5));\nconst r2 = (n) => Math.round(n * 100) / 100;\n\nconst lines = (eingabe.lines ?? []).map((l) => {\n  const quantity = Number(l.quantity ?? 1);\n  const unitPriceNet = Number(l.unitPriceNet ?? 0);\n  const vatRatePercent = Number(l.vatRatePercent ?? 19);\n  return { name: l.name, quantity, unitCode: l.unitCode ?? 'C62', unitPriceNet, vatRatePercent, lineNetAmount: r2(quantity * unitPriceNet) };\n});\nif (lines.length === 0) throw new Error('Mindestens eine Position ausfüllen.');\n\nconst gruppen = {};\nfor (const l of lines) {\n  const g = (gruppen[l.vatRatePercent] ??= { ratePercent: l.vatRatePercent, basisAmount: 0, categoryCode: l.vatRatePercent > 0 ? 'S' : 'Z' });\n  g.basisAmount = r2(g.basisAmount + l.lineNetAmount);\n}\nconst vatBreakdown = Object.values(gruppen).map((g) => ({ ...g, taxAmount: r2((g.basisAmount * g.ratePercent) / 100) }));\nconst totalNet = r2(lines.reduce((s, l) => s + l.lineNetAmount, 0));\nconst totalVat = r2(vatBreakdown.reduce((s, g) => s + g.taxAmount, 0));\nconst invoiceNumber = eingabe.invoiceNumber ?? 'RE-' + heute.replaceAll('-', '') + '-' + String(Date.now()).slice(-4);\n\nconst invoice = {\n  invoiceNumber,\n  issueDate: eingabe.issueDate ?? heute,\n  dueDate: eingabe.dueDate ?? faellig,\n  seller: eingabe.seller ?? VERKAEUFER,\n  buyer: eingabe.buyer,\n  payment: { iban: eingabe.iban ?? IBAN, reference: invoiceNumber },\n  lines,\n  vatBreakdown,\n  totalNet,\n  totalVat,\n  totalGross: r2(totalNet + totalVat),\n};\nreturn [{ json: { invoice, filename: invoiceNumber + '.pdf' } }];"
+      },
+      "name": "create invoice Json from data",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [272, 352],
+      "onError": "continueErrorOutput"
+    },
+    {
+      "parameters": {
+        "source": "generate",
+        "invoice": "={{ JSON.stringify($json.invoice) }}",
+        "filename": "={{ $json.filename }}"
+      },
+      "name": "Create invoice",
+      "type": "n8n-nodes-zugferd-finisma.zugferdFinisma",
+      "typeVersion": 1,
+      "position": [544, 160],
+      "onError": "continueErrorOutput"
+    },
+    {
+      "parameters": {
+        "respondWith": "binary",
+        "options": {
+          "responseHeaders": {
+            "entries": [
+              {
+                "name": "Content-Disposition",
+                "value": "={{ 'attachment; filename=\"' + $binary.data.fileName + '\"' }}"
+              }
+            ]
+          }
+        }
+      },
+      "name": "download PDF",
+      "type": "n8n-nodes-base.respondToWebhook",
+      "typeVersion": 1.1,
+      "position": [816, 144]
+    },
+    {
+      "parameters": {
+        "respondWith": "text",
+        "responseBody": "={{ '<!doctype html><html lang=\"de\"><head><meta charset=\"utf-8\"><title>Fehler</title></head><body style=\"font-family:Helvetica,Arial,sans-serif;max-width:760px;margin:40px auto;padding:0 16px\"><h1>Rechnung konnte nicht erzeugt werden</h1><pre style=\"white-space:pre-wrap;background:#fdecea;border:1px solid #f1b0b7;border-radius:8px;padding:12px\">' + String($json.error?.message ?? $json.error ?? 'Unbekannter Fehler').replace(/</g,'&lt;') + (($json.error?.description) ? '\\n\\n' + String($json.error.description).replace(/</g,'&lt;') : '') + '</pre><p><a href=\"\">Zurück zum Formular</a></p></body></html>' }}",
+        "options": {
+          "responseCode": 422,
+          "responseHeaders": {
+            "entries": [
+              {
+                "name": "Content-Type",
+                "value": "text/html; charset=utf-8"
+              }
+            ]
+          }
+        }
+      },
+      "name": "show error",
+      "type": "n8n-nodes-base.respondToWebhook",
+      "typeVersion": 1.1,
+      "position": [816, 368]
+    }
+  ],
+  "connections": {
+    "Webhook": {
+      "main": [
+        [{ "node": "show form", "type": "main", "index": 0 }],
+        [{ "node": "create invoice Json from data", "type": "main", "index": 0 }]
+      ]
+    },
+    "create invoice Json from data": {
+      "main": [
+        [{ "node": "Create invoice", "type": "main", "index": 0 }],
+        [{ "node": "show error", "type": "main", "index": 0 }]
+      ]
+    },
+    "Create invoice": {
+      "main": [
+        [{ "node": "download PDF", "type": "main", "index": 0 }],
+        [{ "node": "show error", "type": "main", "index": 0 }]
+      ]
+    }
+  }
+}

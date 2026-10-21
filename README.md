@@ -423,6 +423,27 @@ In a real workflow, the invoice data usually comes from a previous node. Use an
 expression such as `{{ JSON.stringify($json.invoice) }}` in
 **Invoice Data (JSON)**.
 
+### Invoice from a web form, no PDF needed
+
+[`examples/rechnung-aus-formular.json`](examples/rechnung-aus-formular.json)
+is a complete workflow with five nodes: a Webhook answers GET with a small
+HTML form and POST with the finished invoice. A Code node turns the form
+fields into invoice data (seller, IBAN and payment term are constants at the
+top of the node), the finisma node runs with **Source** set to **Generate From
+Invoice Data**, and a Respond to Webhook node returns the ZUGFeRD PDF as a
+download. Errors from the API land on a separate error page.
+
+Import the file in the n8n editor (**Import from File**), select your finisma
+credential in the node **Create invoice**, edit the constants in the Code node,
+publish the workflow and open `/webhook/rechnung` on your instance. The
+workflow is shown step by step in a short video (German):
+[E-Rechnungen mit n8n](https://www.youtube.com/watch?v=JaJeFZocGAo). The
+accompanying article is at
+[finisma.de/blog/n8n-rechnung-aus-formular](https://finisma.de/blog/n8n-rechnung-aus-formular).
+
+The webhook is public once the workflow is active. Set an authentication on
+the Webhook node before you use it outside a test.
+
 ## Costs and limits
 
 As stated in the [finisma REST API reference](https://finisma.de/entwickler/rest)
