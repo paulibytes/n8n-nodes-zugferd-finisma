@@ -287,6 +287,15 @@ export const invoiceProperties: INodeProperties[] = [
 			"Comma-separated descriptions of the attachments (BT-123), in the same order as 'Attachment Binary Fields'. Without a description, the recipient only sees the file name. A description cannot contain a comma.",
 	},
 	{
+		displayName: 'Reference Attachments in Invoice',
+		name: 'attachmentNote',
+		type: 'boolean',
+		default: true,
+		displayOptions: showInvoiceCreate,
+		description:
+			"Whether to add a note to the invoice data that points to each embedded attachment, e.g. \"Eingebettete Anlage „timesheet.pdf“: Timesheet March 2026.\" The German Federal Ministry of Finance requires such a reference when an attachment carries invoice details (letter of 15 October 2026). Has no effect without attachments.",
+	},
+	{
 		displayName: 'Output File Name',
 		name: 'filename',
 		type: 'string',

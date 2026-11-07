@@ -4,6 +4,15 @@ All notable changes to this package are documented in this file.
 The format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and the package uses [Semantic Versioning](https://semver.org/).
 
+## [Unreleased]
+
+### Added
+
+- Invoice > Create: new parameter **Reference Attachments in Invoice**
+  (default on). finisma writes a note into the invoice data for each embedded
+  attachment, as required by the German Federal Ministry of Finance letter of
+  15 October 2026. Switch it off to embed attachments without a note.
+
 ## [0.4.0] - 2026-10-15
 
 ### Added

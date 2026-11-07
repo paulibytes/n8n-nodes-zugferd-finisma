@@ -443,6 +443,14 @@ export class ZugferdFinisma implements INodeType {
 					// fall back to the file name.
 					form.append('attachmentDescriptions', attachmentDescriptions[n] ?? '');
 				}
+				// The API adds the reference note by default; only an explicit
+				// false is sent, so older API versions see no new field.
+				if (
+					attachmentFields.length > 0 &&
+					this.getNodeParameter('attachmentNote', i, true) === false
+				) {
+					form.append('attachmentNote', 'false');
+				}
 
 				const requestedName = this.getNodeParameter('filename', i) as string;
 				if (generate && !requestedName) {
